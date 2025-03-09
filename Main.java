@@ -853,20 +853,34 @@ class Device {
 }
 
 class User {
+    private int userId;
     private String username;
     private String password;
     private ArrayList<Device> devices;
     private int nextDeviceId;
 
-    public User(String username, String password) {
+    public User(int userId, String username, String password) {
+        this.userId = userId;
         this.username = username;
         this.password = password;
         this.devices = new ArrayList<>();
         this.nextDeviceId = 1;
     }
 
+    public void setNextDeviceId(int nextDeviceId) {
+        this.nextDeviceId = nextDeviceId;
+    }
+
+    public int getUserId() {
+        return userId;
+    }
+
     public String getUsername() {
         return username;
+    }
+
+    public int getNextDeviceId() {
+        return nextDeviceId++;
     }
 
     public boolean verifyPassword(String password) {
@@ -878,6 +892,12 @@ class User {
     }
 
     public void addDevice(Device device) {
+        for (Device existingDevice : devices) {
+            if (existingDevice.getId() == device.getId()) {
+                System.out.println("Device ID " + device.getId() + " already exists. Device not added.");
+                return;
+            }
+        }
         devices.add(device);
     }
 
@@ -900,20 +920,25 @@ class UserManager {
         users = new ArrayList<>();
     }
 
-    public boolean registerUser(String username, String password) {
+    public boolean registerUser(int userId, String username, String password) {
         for (User user : users) {
             if (user.getUsername().equals(username)) {
                 return false;
             }
         }
-        User newUser = new User(username, password);
+        for (User user : users) {
+            if (user.getUserId() == userId) {
+                return false;
+            }
+        }
+        User newUser = new User(userId, username, password);
         users.add(newUser);
         return true;
     }
 
-    public boolean loginUser(String username, String password) {
+    public boolean loginUser(int userId, String username, String password) {
         for (User user : users) {
-            if (user.getUsername().equals(username) && user.verifyPassword(password)) {
+            if ((user.getUserId() == userId)  && user.getUsername().equals(username) && user.verifyPassword(password)) {
                 currentUser = user;
                 return true;
             }
@@ -932,11 +957,14 @@ class UserManager {
     public ArrayList<User> getUsers() {
         return users;
     }
+
+    public int getUserCount() {
+        return users.size();
+    }
 }
 
 public class Main {
     protected static UserManager userManager = new UserManager();
-    protected static int nextDeviceId = 1;
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
@@ -977,11 +1005,22 @@ public class Main {
     }
 
     public static void handleLogin(Scanner sc) {
-        System.out.print("Enter username: ");
-        String username = sc.nextLine();
-        System.out.print("Enter password: ");
-        String password = sc.nextLine();
-        if (userManager.loginUser(username, password)) {
+        int userId = 0;
+        String username ="";
+        String password = "";
+        try {
+            System.out.print("Enter user ID (numeric): ");
+            userId = Integer.parseInt(sc.nextLine());
+            System.out.print("Enter username: ");
+            username = sc.nextLine();
+            System.out.print("Enter password: ");
+            password = sc.nextLine();
+        }
+        catch (Exception e) {
+            System.out.println("Invalid input. Please enter valid input");
+            return;
+        }
+        if (userManager.loginUser(userId, username, password)) {
             System.out.println("Login successful!");
         } else {
             System.out.println("Invalid username or password.");
@@ -989,14 +1028,24 @@ public class Main {
     }
 
     public static void handleRegistration(Scanner sc) {
-        System.out.print("Enter new username: ");
-        String username = sc.nextLine();
-        System.out.print("Enter new password: ");
-        String password = sc.nextLine();
-        if (userManager.registerUser(username, password)) {
+        int userId = 0;
+        String username = "";
+        String password = "";
+        try {
+            System.out.print("Enter user ID (numeric): ");
+            userId = Integer.parseInt(sc.nextLine());
+            System.out.print("Enter new username: ");
+            username = sc.nextLine();
+            System.out.print("Enter new password: ");
+            password = sc.nextLine();
+        }
+        catch (Exception e) {
+            System.out.println("Invalid input. Please enter valid input");
+        }
+        if (userManager.registerUser(userId, username, password)) {
             System.out.println("Registration successful! Please login.");
         } else {
-            System.out.println("Username already exists. Please choose another username.");
+            System.out.println("Registration failed. Username or user ID may already exist.");
         }
     }
 
@@ -1004,6 +1053,7 @@ public class Main {
         User currentUser = userManager.getCurrentUser();
         ArrayList<Device> devices = currentUser.getDevices();
         System.out.println("==== Welcome, " + currentUser.getUsername() + " ====");
+        System.out.println("==== User ID: " + currentUser.getUserId() + " ====");
         System.out.println("1. Add New Device");
         System.out.println("2. View Devices");
         System.out.println("3. Control Devices");
@@ -1105,9 +1155,17 @@ public class Main {
                 if (deviceName.equals("TV") || deviceName.equals("AC") ||
                         deviceName.equals("GEYSER") || deviceName.equals("FAN") ||
                         deviceName.equals("LIGHT")) {
-                    Device device = new Device(nextDeviceId++, deviceName);
+                    System.out.print("Enter device " + i + " ID (numeric): ");
+                    int deviceId = 0;
+                    try {
+                        deviceId = Integer.parseInt(sc.nextLine());
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid device ID. Please enter a numeric value.");
+                        i--;
+                    }
+                    Device device = new Device(deviceId, deviceName);
                     currentUser.addDevice(device);
-                    System.out.println(deviceName + " has been added successfully with ID: " + (nextDeviceId-1));
+                    System.out.println(deviceName + " has been added successfully with ID: " + deviceId);
                 } else {
                     System.out.println("Invalid device name. Please enter a valid device name.");
                     i--;
